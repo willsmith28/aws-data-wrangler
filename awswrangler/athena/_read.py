@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 import boto3
 import botocore.exceptions
 import pandas as pd
+from pyathena.formatter import DefaultParameterFormatter
 
 from awswrangler import _utils, catalog, exceptions, s3
 from awswrangler._config import apply_configs
@@ -821,8 +822,12 @@ def read_sql_query(
     session: boto3.Session = _utils.ensure_session(session=boto3_session)
     if params is None:
         params = {}
-    for key, value in params.items():
-        sql = sql.replace(f":{key};", str(value))
+    else:
+        formatter = DefaultParameterFormatter()
+        for key in params.keys():
+            # convert parameterized query from named paramstyle to pyformat
+            sql = sql.replace(f":{key};", f"%({key})s")
+        sql = formatter.format(sql, params)
 
     max_remote_cache_entries = min(max_remote_cache_entries, max_local_cache_entries)
 
@@ -1182,8 +1187,12 @@ def unload(
     # Substitute query parameters
     if params is None:
         params = {}
-    for key, value in params.items():
-        sql = sql.replace(f":{key};", str(value))
+    else:
+        formatter = DefaultParameterFormatter()
+        for key in params.keys():
+            # convert parameterized query from named paramstyle to pyformat
+            sql = sql.replace(f":{key};", f"%({key})s")
+        sql = formatter.format(sql, params)
     return _unload(
         sql=sql,
         path=path,
