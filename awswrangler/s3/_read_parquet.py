@@ -34,8 +34,10 @@ from awswrangler.s3._read import (
 
 _ray_found = importlib.util.find_spec("ray")
 if _ray_found:
-    import ray
     from ray.data.impl.remote_fn import cached_remote_fn
+
+    import ray
+    from awswrangler.ray.datasources._parquet_datasource import ParquetDatasource
 
 _modin_found = importlib.util.find_spec("modin")
 if _modin_found:
@@ -774,7 +776,12 @@ def read_parquet(
     _logger.debug("args:\n%s", pprint.pformat(args))
 
     if _ray_found:
-        ds = ray.data.read_parquet(paths=paths, parallelism=parallelism)
+        ds = ray.data.read_datasource(
+            ParquetDatasource(),
+            parallelism=parallelism,
+            paths=paths,
+            path_root="/".join(path_root.split("/")[:4])[5:] if dataset else None,
+        )
         if _modin_found:
             pyarrow_args = _set_default_pyarrow_additional_kwargs(pyarrow_additional_kwargs)
             block_to_df = cached_remote_fn(_block_to_df)
