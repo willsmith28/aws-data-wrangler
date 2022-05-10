@@ -1,6 +1,5 @@
 """Amazon S3 Read Module (PRIVATE)."""
 import datetime
-import importlib.util
 import logging
 import pprint
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
@@ -12,6 +11,7 @@ import pandas.io.parsers
 from pandas.io.common import infer_compression
 
 from awswrangler import _utils, exceptions
+from awswrangler._distributed import _modin_found, _ray_found, modin, pd, ray
 from awswrangler.s3._fs import open_s3_object
 from awswrangler.s3._list import _path2list
 from awswrangler.s3._read import (
@@ -22,17 +22,6 @@ from awswrangler.s3._read import (
     _read_dfs_from_multiple_paths,
     _union,
 )
-
-_ray_found = importlib.util.find_spec("ray")
-if _ray_found:
-    import ray
-
-_modin_found = importlib.util.find_spec("modin")
-if _modin_found:
-    import modin.pandas as pd
-else:
-    import pandas as pd
-
 
 _logger: logging.Logger = logging.getLogger(__name__)
 

@@ -3,7 +3,6 @@
 import concurrent.futures
 import datetime
 import functools
-import importlib.util
 import itertools
 import json
 import logging
@@ -17,6 +16,7 @@ import pyarrow.parquet
 
 from awswrangler import _data_types, _utils, exceptions
 from awswrangler._config import apply_configs
+from awswrangler._distributed import _modin_found, _ray_found, modin, pd, ray
 from awswrangler.catalog._get import _get_partitions
 from awswrangler.s3._fs import open_s3_object
 from awswrangler.s3._list import _path2list
@@ -31,18 +31,6 @@ from awswrangler.s3._read import (
     _read_dfs_from_multiple_paths,
     _union,
 )
-
-_ray_found = importlib.util.find_spec("ray")
-if _ray_found:
-    import ray
-    from ray.data.impl.remote_fn import cached_remote_fn
-
-_modin_found = importlib.util.find_spec("modin")
-if _modin_found:
-    import modin.pandas as pd
-    from modin.distributed.dataframe.pandas.partitions import from_partitions
-else:
-    import pandas as pd
 
 _logger: logging.Logger = logging.getLogger(__name__)
 
@@ -777,7 +765,7 @@ def read_parquet(
         ds = ray.data.read_parquet(paths=paths, parallelism=parallelism)
         if _modin_found:
             pyarrow_args = _set_default_pyarrow_additional_kwargs(pyarrow_additional_kwargs)
-            block_to_df = cached_remote_fn(_block_to_df)
+            block_to_df = ray.data.impl.remote_fn.cached_remote_fn(_block_to_df)
             pd_objs = [
                 block_to_df.remote(
                     block,
@@ -788,7 +776,7 @@ def read_parquet(
                 )
                 for block in ds.get_internal_block_refs()
             ]
-            return from_partitions(pd_objs, axis=0)
+            return modin.distributed.dataframe.pandas.partitions.from_partitions(pd_objs, axis=0)
         return ds
 
     if chunked is not False:

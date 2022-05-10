@@ -2,7 +2,6 @@
 
 import concurrent.futures
 import datetime
-import importlib.util
 import itertools
 import json
 import logging
@@ -13,21 +12,10 @@ import boto3
 from pyarrow import Table, concat_tables
 
 from awswrangler import _utils, exceptions
-from awswrangler._distributed import _ray_remote
+from awswrangler._distributed import _ray_found, _ray_remote, pd, ray
 from awswrangler.s3._describe import size_objects
 from awswrangler.s3._list import _path2list
 from awswrangler.s3._read import _get_path_ignore_suffix, _read_tables_from_multiple_paths
-
-_ray_found = importlib.util.find_spec("ray")
-if _ray_found:
-    import ray
-
-_modin_found = importlib.util.find_spec("modin")
-if _modin_found:
-    import modin.pandas as pd
-else:
-    import pandas as pd
-
 
 _logger: logging.Logger = logging.getLogger(__name__)
 

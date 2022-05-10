@@ -5,7 +5,6 @@ Documentation: https://aws-data-wrangler.readthedocs.io/
 
 """
 
-import importlib.util
 import logging as _logging
 
 from awswrangler import (  # noqa
@@ -32,10 +31,7 @@ from awswrangler import (  # noqa
 )
 from awswrangler.__metadata__ import __description__, __license__, __title__, __version__  # noqa
 from awswrangler._config import config  # noqa
-from awswrangler._distributed import _initialize_ray
-
-if importlib.util.find_spec("ray"):
-    _initialize_ray()
+from awswrangler._distributed import Ray, initialize_ray
 
 __all__ = [
     "athena",
@@ -59,11 +55,14 @@ __all__ = [
     "sqlserver",
     "config",
     "timestream",
+    "Ray",
     "__description__",
     "__license__",
     "__title__",
     "__version__",
 ]
 
-
 _logging.getLogger("awswrangler").addHandler(_logging.NullHandler())
+
+if config.init_on_import:
+    initialize_ray()

@@ -48,6 +48,15 @@ _CONFIG_ARGS: Dict[str, _ConfigArg] = {
     "secretsmanager_endpoint_url": _ConfigArg(dtype=str, nullable=True, enforced=True),
     # Botocore config
     "botocore_config": _ConfigArg(dtype=botocore.config.Config, nullable=True),
+    # Ray config
+    "init_on_import": _ConfigArg(dtype=bool, nullable=True),
+    "address": _ConfigArg(dtype=str, nullable=True),
+    "redis_password": _ConfigArg(dtype=str, nullable=True),
+    "ignore_reinit_error": _ConfigArg(dtype=bool, nullable=True),
+    "include_dashboard": _ConfigArg(dtype=bool, nullable=True),
+    "object_store_memory": _ConfigArg(dtype=int, nullable=True),
+    "cpu_count": _ConfigArg(dtype=int, nullable=True),
+    "gpu_count": _ConfigArg(dtype=int, nullable=True),
 }
 
 
@@ -68,6 +77,7 @@ class _Config:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self.dynamodb_endpoint_url = None
         self.secretsmanager_endpoint_url = None
         self.botocore_config = None
+        self.init_on_import = False
         for name in _CONFIG_ARGS:
             self._load_config(name=name)
 
@@ -393,6 +403,78 @@ class _Config:  # pylint: disable=too-many-instance-attributes,too-many-public-m
     @botocore_config.setter
     def botocore_config(self, value: Optional[botocore.config.Config]) -> None:
         self._set_config_value(key="botocore_config", value=value)
+
+    @property
+    def init_on_import(self) -> Optional[bool]:
+        """Property init_on_import."""
+        return cast(Optional[bool], self["init_on_import"])
+
+    @init_on_import.setter
+    def init_on_import(self, value: Optional[bool]) -> None:
+        self._set_config_value(key="init_on_import", value=value)
+
+    @property
+    def ignore_reinit_error(self) -> Optional[bool]:
+        """Property ignore_reinit_error."""
+        return cast(Optional[bool], self["ignore_reinit_error"])
+
+    @ignore_reinit_error.setter
+    def ignore_reinit_error(self, value: Optional[bool]) -> None:
+        self._set_config_value(key="ignore_reinit_error", value=value)
+
+    @property
+    def include_dashboard(self) -> Optional[bool]:
+        """Property include_dashboard."""
+        return cast(Optional[bool], self["include_dashboard"])
+
+    @include_dashboard.setter
+    def include_dashboard(self, value: Optional[bool]) -> None:
+        self._set_config_value(key="include_dashboard", value=value)
+
+    @property
+    def address(self) -> Optional[str]:
+        """Property address."""
+        return cast(Optional[str], self["address"])
+
+    @address.setter
+    def address(self, value: Optional[str]) -> None:
+        self._set_config_value(key="address", value=value)
+
+    @property
+    def redis_password(self) -> Optional[str]:
+        """Property redis_password."""
+        return cast(Optional[str], self["redis_password"])
+
+    @redis_password.setter
+    def redis_password(self, value: Optional[str]) -> None:
+        self._set_config_value(key="redis_password", value=value)
+
+    @property
+    def object_store_memory(self) -> int:
+        """Property object_store_memory."""
+        return cast(int, self["object_store_memory"])
+
+    @object_store_memory.setter
+    def object_store_memory(self, value: int) -> None:
+        self._set_config_value(key="object_store_memory", value=value)
+
+    @property
+    def cpu_count(self) -> int:
+        """Property cpu_count."""
+        return cast(int, self["cpu_count"])
+
+    @cpu_count.setter
+    def cpu_count(self, value: int) -> None:
+        self._set_config_value(key="cpu_count", value=value)
+
+    @property
+    def gpu_count(self) -> int:
+        """Property gpu_count."""
+        return cast(int, self["gpu_count"])
+
+    @gpu_count.setter
+    def gpu_count(self, value: int) -> None:
+        self._set_config_value(key="gpu_count", value=value)
 
 
 def _insert_str(text: str, token: str, insert: str) -> str:
