@@ -40,8 +40,8 @@ def _split_paths_by_bucket(paths: List[str]) -> Dict[str, List[str]]:
 def _delete_objects(
     bucket: str,
     keys: List[str],
-    boto3_session: boto3.Session,
     s3_additional_kwargs: Optional[Dict[str, Any]],
+    boto3_session: Optional[boto3.Session] = None,
     attempt: int = 1,
 ) -> None:
     client_s3: boto3.client = _utils.client(service_name="s3", session=boto3_session)
