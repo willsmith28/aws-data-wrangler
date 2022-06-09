@@ -2,7 +2,7 @@ import logging
 from decimal import Decimal
 
 import boto3
-import cx_Oracle
+import oracledb
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -186,7 +186,7 @@ def test_insert_with_column_names(oracle_table, oracle_con):
 
     df = pd.DataFrame({"c0": ["foo", "bar"], "c2": [1, 2]})
 
-    with pytest.raises(cx_Oracle.Error):
+    with pytest.raises(oracledb.Error):
         wr.oracle.to_sql(
             df=df, con=oracle_con, schema="TEST", table=oracle_table, mode="append", use_column_names=False
         )
