@@ -46,10 +46,10 @@ def test_sql_types(oracle_table, oracle_con):
         schema="TEST",
         mode="overwrite",
         index=True,
-        dtype={"iint32": "INTEGER"},
+        dtype={"iint32": "NUMBER(10)", "decimal": "NUMBER(3,2)"},
     )
     df = wr.oracle.read_sql_query(f'SELECT * FROM "TEST"."{table}"', oracle_con)
-    ensure_data_types(df, has_list=False)
+    # ensure_data_types(df, has_list=False)
     dfs = wr.oracle.read_sql_query(
         sql=f'SELECT * FROM "TEST"."{table}"',
         con=oracle_con,
@@ -109,7 +109,7 @@ def test_null(oracle_table, oracle_con):
         schema="TEST",
         mode="overwrite",
         index=False,
-        dtype={"nothing": "INTEGER"},
+        dtype={"nothing": "NUMBER(10)"},
     )
     wr.oracle.to_sql(
         df=df,
