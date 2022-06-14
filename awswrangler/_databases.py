@@ -1,6 +1,5 @@
 """Databases Utilities."""
 
-import importlib.util
 import logging
 import ssl
 from decimal import Decimal
@@ -12,10 +11,6 @@ import pyarrow as pa
 
 from awswrangler import _data_types, _utils, exceptions, secretsmanager
 from awswrangler.catalog import get_connection
-
-_oracledb_found = importlib.util.find_spec("oracledb")
-if _oracledb_found:
-    import oracledb  # pylint: disable=import-error
 
 _logger: logging.Logger = logging.getLogger(__name__)
 
@@ -129,22 +124,6 @@ def _convert_params(sql: str, params: Optional[Union[List[Any], Tuple[Any, ...],
     return args
 
 
-def _convert_oracle_specific_objects(col_values: List[Any]) -> List[Any]:
-    if any(isinstance(col_value, oracledb.LOB) for col_value in col_values):
-        col_values = [
-            col_value.read() if isinstance(col_value, oracledb.LOB) else col_value for col_value in col_values
-        ]
-    return col_values
-
-
-def _convert_oracle_decimal_objects(col_values: List[Any]) -> List[Any]:
-    for col_value in col_values:
-        _logger.debug("TYPEH: %s", type(col_value))
-    col_values = [Decimal(repr(col_value)) if col_value is not None else col_value for col_value in col_values]
-
-    return col_values
-
-
 def _records2df(
     records: List[Tuple[Any]],
     cols_names: List[str],
@@ -152,28 +131,24 @@ def _records2df(
     safe: bool,
     dtype: Optional[Dict[str, pa.DataType]],
     timestamp_as_object: bool,
-    connection_type: Any,
+    con: Any,
 ) -> pd.DataFrame:
     arrays: List[pa.Array] = []
     for col_values, col_name in zip(tuple(zip(*records)), cols_names):  # Transposing
         if (dtype is None) or (col_name not in dtype):
-            if isinstance(connection_type, oracledb.Connection):
-                _logger.debug("2DFNOTTRYIF")
-                col_values = _convert_oracle_specific_objects(col_values)
+            col_values = _data_types._convert_oracle_specific_objects(con, col_values)
             try:
                 array: pa.Array = pa.array(obj=col_values, safe=safe)  # Creating Arrow array
             except pa.ArrowInvalid as ex:
                 array = _data_types.process_not_inferred_array(ex, values=col_values)  # Creating Arrow array
         else:
             try:
-                if isinstance(connection_type, oracledb.Connection):
-                    _logger.debug("2DFTRYIS %s %s", {col_name}, {dtype[col_name]})
-                    if dtype[col_name] == pa.string():
-                        _logger.debug("2DFTRYIF")
-                        col_values = _convert_oracle_specific_objects(col_values)
-                    if isinstance(dtype[col_name], pa.Decimal128Type):
-                        _logger.debug("2DFTRYIFDECIMAL")
-                        col_values = _convert_oracle_decimal_objects(col_values)
+                _logger.debug("2DFTRYIS %s %s", {col_name}, {dtype[col_name]})
+                if dtype[col_name] == pa.string():
+                    _logger.debug("2DFTRYIF")
+                    col_values = _data_types._convert_oracle_specific_objects(con, col_values)
+                if isinstance(dtype[col_name], pa.Decimal128Type):
+                    col_values = _data_types._convert_oracle_decimal_objects(con, col_values)
                 array = pa.array(obj=col_values, type=dtype[col_name], safe=safe)  # Creating Arrow array with dtype
             except pa.ArrowInvalid:
                 array = pa.array(obj=col_values, safe=safe)  # Creating Arrow array
@@ -208,17 +183,6 @@ def _get_cols_names(cursor_description: Any) -> List[str]:
     return cols_names
 
 
-def _handle_oracle_decimal(cursor_description: Any) -> Dict[str, pa.DataType]:
-    dtype = {}
-    # Oracle stores DECIMAL as the NUMBER type
-    for row in cursor_description:
-        if row[1] == oracledb.DB_TYPE_NUMBER and row[5] > 0:
-            dtype[row[0]] = pa.decimal128(row[4], row[5])
-
-    _logger.debug("decimal dtypes: %s", dtype)
-    return dtype
-
-
 def _iterate_results(
     con: Any,
     cursor_args: List[Any],
@@ -230,12 +194,11 @@ def _iterate_results(
 ) -> Iterator[pd.DataFrame]:
     with con.cursor() as cursor:
         cursor.execute(*cursor_args)
-        if isinstance(con, oracledb.Connection):
-            decimal_dtypes = _handle_oracle_decimal(cursor.description)
-            if decimal_dtypes and dtype is not None:
-                dtype = dict(list(decimal_dtypes.items()) + list(dtype.items()))
-            elif decimal_dtypes:
-                dtype = decimal_dtypes
+        decimal_dtypes = _data_types._handle_oracle_decimal(con, cursor.description)
+        if decimal_dtypes and dtype is not None:
+            dtype = dict(list(decimal_dtypes.items()) + list(dtype.items()))
+        elif decimal_dtypes:
+            dtype = decimal_dtypes
         cols_names = _get_cols_names(cursor.description)
         while True:
             records = cursor.fetchmany(chunksize)
@@ -248,7 +211,7 @@ def _iterate_results(
                 safe=safe,
                 dtype=dtype,
                 timestamp_as_object=timestamp_as_object,
-                connection_type=con,
+                con=con,
             )
 
 
@@ -263,12 +226,11 @@ def _fetch_all_results(
     with con.cursor() as cursor:
         cursor.execute(*cursor_args)
         cols_names = _get_cols_names(cursor.description)
-        if isinstance(con, oracledb.Connection):
-            decimal_dtypes = _handle_oracle_decimal(cursor.description)
-            if decimal_dtypes and dtype is not None:
-                dtype = dict(list(decimal_dtypes.items()) + list(dtype.items()))
-            elif decimal_dtypes:
-                dtype = decimal_dtypes
+        decimal_dtypes = _data_types._handle_oracle_decimal(con, cursor.description)
+        if decimal_dtypes and dtype is not None:
+            dtype = dict(list(decimal_dtypes.items()) + list(dtype.items()))
+        elif decimal_dtypes:
+            dtype = decimal_dtypes
 
         return _records2df(
             records=cast(List[Tuple[Any]], cursor.fetchall()),
@@ -277,7 +239,7 @@ def _fetch_all_results(
             dtype=dtype,
             safe=safe,
             timestamp_as_object=timestamp_as_object,
-            connection_type=con,
+            con=con,
         )
 
 
